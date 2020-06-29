@@ -48,6 +48,11 @@ SCHEDULER_REPO_CONF_DIR="config"
 # Length of all the generated passwords
 PASSWORD_LENGTH=20
 
+# Set this value to '0' to NOT preload the doctors and their shift
+# configurations. Set it to someething diffent to DO preload them.
+# Note the ALLOWED SHIFTS will ALWAYS be preloaded
+PRELOAD_DOCTORS_AND_SHIFT_CONFIGS=1
+
 # The prefix with which the jar files start (used to get the name of 
 # the jar files without knowing the version suffix). 
 # E.g. guardians-1.0.0.jar -> We could use as a prefix "guardians"
@@ -103,6 +108,8 @@ GUARDIANS_REST_SQL_DIR="$(dirname "$0")/${GUARDIANS_REST_DIR_NAME}/sql"
 GUARDIANS_REST_SQL_CONFIGURE="${GUARDIANS_REST_SQL_DIR}/configure.sql"
 GUARDIANS_REST_SQL_CREATE="${GUARDIANS_REST_SQL_DIR}/createTables.sql"
 GUARDIANS_REST_SQL_POPULATE_ALLOWED_SHIFTS="${GUARDIANS_REST_SQL_DIR}/populateAllowedShifts.sql"
+GUARDIANS_REST_SQL_POPULATE_DOCTORS="${GUARDIANS_REST_SQL_DIR}/populateDoctors.sql"
+GUARDIANS_REST_SQL_POPULATE_SHIFT_CONFIGS="${GUARDIANS_REST_SQL_DIR}/populateShiftConfigs.sql"
 
 # The directory where the configuration files of the scheduler will be 
 #stored
