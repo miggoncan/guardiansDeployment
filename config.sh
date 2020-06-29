@@ -23,17 +23,21 @@
 
 # The repository and tagged version from which the rest service will 
 # be installed
-GUARDIANS_REST_RELEASE="v1.0.2"
+GUARDIANS_REST_RELEASE="v1.1.0"
 GUARDIANS_REST_REPO="https://github.com/miggoncan/guardiansRESTinterface.git"
 # The name of the directory that will be generated after a git clone
 GUARDIANS_REST_DIR_NAME="guardiansRESTinterface"
 
 # The repository and tagged version from which the scheduler will be
 # installed
-SCHEDULER_RELEASE="v0.1.3"
+SCHEDULER_RELEASE="v0.1.4"
 SCHEDULER_REPO="https://github.com/miggoncan/guardiansScheduler.git"
 # The name of the directory that will be generated after a git clone
 SCHEDULER_DIR_NAME="guardiansScheduler"
+# The directory inside the git repo that contains the src scripts
+SCHEDULER_REPO_SRC_DIR="src"
+# The directory inside the git repo that contains the config files
+SCHEDULER_REPO_CONF_DIR="config"
 
 ###########################################
 #
@@ -105,14 +109,12 @@ GUARDIANS_REST_SQL_POPULATE_ALLOWED_SHIFTS="${GUARDIANS_REST_SQL_DIR}/populateAl
 SCHEDULER_CONF_DIR="/etc/guardians/scheduler"
 # The directory where the scheduler scripts will be stored
 SCHEDULER_EXEC_DIR="/usr/lib/guardians/scheduler"
-# The direcotory inside the git repo that contains the src scripts
-SCHEDULER_REPO_SRC_DIR="src"
-# The direcotory inside the git repo that contains the config files
-SCHEDULER_REPO_CONF_DIR="config"
 # The script from which the scheduler will be started
 SCHEDULER_ENTRY_POINT="$SCHEDULER_EXEC_DIR/main.py"
 
 SCHEDULER_LOG_FILE="$LOG_DIR/scheduler.log"
+
+SCHEDULER_CONF_LOGGING_FILE_NAME="logging.json"
 
 ###########################################
 #
@@ -146,4 +148,5 @@ TOKEN_GUARDIANS_ENTRY_POINT="GUARDIANS_ENTRY_POINT"
 TOKEN_APPLICATION_PROPERTIES="PATH_TO_APPLICATION_PROPERTIES"
 TOKEN_GUARDIANS_USER="GUARDIANS_USER"
 
-TOKEN_SCHEDULER_LOG_FILE="PAHT_TO_LOG_FILE"
+TOKEN_SCHEDULER_LOG_FILE="PATH_TO_LOG_FILE"
+TOKEN_SCHEDULER_CONF_ARG="ARGUMENT_TO_CHANGE_CONFIG_DIR"

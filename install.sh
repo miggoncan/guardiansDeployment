@@ -3,7 +3,15 @@
 #
 # File: install.sh
 #
-# Description: TODO
+# Description: This script installs the guardians rest and the guardians 
+#     webapp as two standalone services.
+#
+#     The installed services can be started/stopped with the common 
+#     systemctl command.
+#     E.g. 'systemctl start guardians' or 'systemctl stop guardiansWebapp'
+#
+#     For this script to function properly, the commands $MYSQL, $GIT
+#     and $PYTHON have to be on the PATH.
 #
 # Usage: 
 #     bash install.sh
@@ -55,6 +63,24 @@ notInstalled() {
     exit 1
 }
 
+# This function takes one argument which is the error message to be shown
+showUnexpectedError() {
+    echo "==========================================="
+    echo "ERROR:"
+    echo "$1"
+    echo "==========================================="
+    cleanUp
+    exit 1
+}
+
+# Remove temporary files created during the installation
+cleanUp()  {
+    echo "Cleaning up"
+    rm -rf $GUARDIANS_REST_DIR_NAME
+    rm -f $GUARDIANS_REST_KEY_FILE
+    rm -rf $SCHEDULER_DIR_NAME
+}
+
 
 main () {
     # Exit if the user does not have sudo privileges
@@ -64,26 +90,34 @@ main () {
         exit 1
     fi
 
+
+    echo "Checking dependencies"
     # Check the needed commands exist. If any does not exist, the 
     # program will exit with error code 1
     is_bin_in_path $MYSQL || notInstalled $MYSQL
     is_bin_in_path $GIT || notInstalled $GIT
     is_bin_in_path $PYTHON || notInstalled $PYTHON
 
+
     echo "Creating users: $GUARDIANS_REST_USER"
     useradd --no-create-home $GUARDIANS_REST_USER
     usermod --lock $GUARDIANS_REST_USER
 
+
     echo "Creating needed directories"
+    mkdir -p $LOG_DIR
     mkdir -p $GUARDIANS_REST_CONF_DIR
     mkdir -p $GUARDIANS_REST_KEYSTORE_DIR
-    mkdir -p $LOG_DIR
     mkdir -p $GUARDIANS_REST_EXEC_DIR
+    mkdir -p $SCHEDULER_CONF_DIR
+    mkdir -p $SCHEDULER_EXEC_DIR
+
 
     echo "Generating passwords"
     passwordMysql="$($GEN_PASSWORD_COMMAND)"
     passwordKeystore="$($GEN_PASSWORD_COMMAND)"
     passwordBasicAuth="$($GEN_PASSWORD_COMMAND)"
+
 
     echo "Generating the key for guardians rest service"
     bash genaratePkcs12Key.sh $passwordKeystore \
@@ -91,8 +125,11 @@ main () {
         --file=$GUARDIANS_REST_KEY_FILE
     cp $GUARDIANS_REST_KEY_FILE $GUARDIANS_REST_KEYSTORE_DIR/$GUARDIANS_REST_KEY_FILE
 
+
     echo "Cloning guardians rest release $GUARDIANS_REST_RELEASE"
-    $GIT clone --single-branch -b $GUARDIANS_REST_RELEASE $GUARDIANS_REST_REPO
+    output="$($GIT clone --single-branch -b $GUARDIANS_REST_RELEASE $GUARDIANS_REST_REPO 2>&1)"
+    [ $? -eq 0 ] || showUnexpectedError "$output"
+
 
     echo "Configuring the rest service"
 
@@ -113,7 +150,8 @@ main () {
         "${TOKEN_BASIC_AUTH_PASSWORD}=${passwordBasicAuth}" \
         \
         "${TOKEN_SCHEDULER_COMMAND}=${SCHEDULER_COMMAND}" \
-        "${TOKEN_SCHEDULER_ENTRY_POINT}=\"${SCHEDULER_ENTRY_POINT} ${SCHEDULER_CONF_DIR_ARG}${SCHEDULER_CONF_DIR}\""
+        "${TOKEN_SCHEDULER_ENTRY_POINT}=${SCHEDULER_ENTRY_POINT}" \
+        "${TOKEN_SCHEDULER_CONF_ARG}=${SCHEDULER_CONF_DIR_ARG}${SCHEDULER_CONF_DIR}"
     cp $propertiesFile $GUARDIANS_REST_CONF_DIR/$GUARDIANS_REST_PROPERTIES_FILE
 
     # Configure the database
@@ -139,32 +177,65 @@ main () {
     # The service will run on startup
     systemctl enable guardians
 
-    # TODO configure scheduler
+
+    echo "Cloning scheduler release $SCHEDULER_RELEASE"
+    output="$($GIT clone --single-branch -b $SCHEDULER_RELEASE $SCHEDULER_REPO 2>&1)"
+    [ $? -eq 0 ] || showUnexpectedError "$output"
+
+    echo "Configuring the scheduler"
+
+    # Install dependencies using pip
+    output="$($SCHEDULER_COMMAND -m pip install -r $SCHEDULER_DIR_NAME/requirements.txt 2>&1)"
+    [ $? -eq 0 ] || showUnexpectedError "$output"
+
+    # Configure the logging file
+    $PYTHON replace.py $SCHEDULER_DIR_NAME/$SCHEDULER_REPO_CONF_DIR/$SCHEDULER_CONF_LOGGING_FILE_NAME \
+        "${TOKEN_SCHEDULER_LOG_FILE}=${SCHEDULER_LOG_FILE}"
+    # Copy the configuration files to its directory
+    cp $SCHEDULER_DIR_NAME/$SCHEDULER_REPO_CONF_DIR/* $SCHEDULER_CONF_DIR/
+
+    # Scheduler source scripts
+    cp $SCHEDULER_DIR_NAME/$SCHEDULER_REPO_SRC_DIR/* $SCHEDULER_EXEC_DIR/
+
 
     # TODO configure the webapp
 
+    # TODO install dependencies
+
+
     echo "Changing permissions and ownerships of needed directories"
+
     userAndGroup="${GUARDIANS_REST_USER}:${GUARDIANS_REST_USER}"
+    chown -R $userAndGroup $LOG_DIR
     chown -R $userAndGroup $GUARDIANS_REST_CONF_DIR
     chown -R $userAndGroup $GUARDIANS_REST_KEYSTORE_DIR
-    chown -R $userAndGroup $LOG_DIR
     chown -R $userAndGroup $GUARDIANS_REST_EXEC_DIR
+    chown -R $userAndGroup $SCHEDULER_CONF_DIR
+    chown -R $userAndGroup $SCHEDULER_EXEC_DIR
+
     # The config and keystore directory will not be changed, so only 
     # permissions to navigate and list files are needed
     chmod 550 $GUARDIANS_REST_CONF_DIR
     chmod 550 $GUARDIANS_REST_KEYSTORE_DIR
-    # The config file and the keystore file only have to be read
+    chmod 550 $SCHEDULER_CONF_DIR
+
+    # The config files and the keystore files only have to be read
     chmod 440 $GUARDIANS_REST_CONF_DIR/$GUARDIANS_REST_PROPERTIES_FILE
     chmod 440 $GUARDIANS_REST_KEYSTORE_DIR/$GUARDIANS_REST_KEY_FILE
+    chmod 440 $SCHEDULER_CONF_DIR/*
+
     # Navigate, list and create files in these directories
     chmod 770 $LOG_DIR
     chmod 770 $GUARDIANS_REST_EXEC_DIR
+    chmod 770 $SCHEDULER_EXEC_DIR
+
     # The main jar only has to be read
     chmod 440 $GUARDIANS_REST_EXEC_DIR/$guardiansRestJar
+    # The scheduler scripts only need to be read
+    chmod 440 $SCHEDULER_EXEC_DIR/*.py
 
-    echo "Cleaning up"
-    rm -rf $GUARDIANS_REST_DIR_NAME
-    rm -f $GUARDIANS_REST_KEY_FILE
+
+    cleanUp
 }
 
 main

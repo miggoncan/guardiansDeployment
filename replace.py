@@ -44,7 +44,8 @@ def main():
     # Transform the arguments into a dict
     data = {}
     for val in sys.argv[2:]:
-        key, value = val.split('=')
+        separatorIndex = val.find('=')
+        key, value = val[:separatorIndex], val[separatorIndex+1:]
         data[key] = value
     
     # Use a temporary file to write the modified content
