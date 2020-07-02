@@ -26,6 +26,39 @@ The contents of the file are self-explanatory.
 
 To install deploy the application, just run `bash install.sh`.
 
+By default, the application will be deployed as:
+```
+/etc/
+ |- guardians/ # The REST service’s configuration directory
+ |   |- application.properties
+ |   |- keystore/
+ |   |   |- guardiansRest.p12
+ |   |- scheduler/ # The Scheduler’s configuration directory
+ |   |   |- scheduler.json
+ |   |   |- logging.json
+ |- guardiansWebapp/ # The Web server’s configuration directory
+ |   |- application.properties
+ |   |- keystore/
+ |   |   |- guardiansWebapp.p12
+ |- systemd/system/
+ |   |- guardians.service        # Systemd service files for both
+ |   |- guardiansWebapp.service  # the REST service and Web server
+/var/log/
+ |- guardians/ # The REST service’s and scheduler’s logging dir
+ |   |- guardians.log
+ |   |- scheduler.log
+ |- guardiansWebapp/ # The Web server’s logging directory
+ |   |- guardiansWebapp.log
+/usr/lib/
+ |- guardians/
+ |   |- guardians-vXXX.jar # The REST service’s jar file
+ |   |- scheduler/ # The scheduler’s source directory
+ |   |   |- main.py
+ |   |   |- scheduler.py
+ |- guardiansWebapp/
+ |   |- guardiansWebapp-vXXX.jar # The Web server’s jar file
+```
+
 Note, the deployment has been configured for the ubuntu file system.
 In case the application was to be deployed in a different file system,
 edit the `config.sh` script.
