@@ -44,9 +44,20 @@ The contents of the file are self-explanatory.
 
 ## Deployment
 
-To deploy the application, we can clone this repository and run the `install.sh` script:
+To deploy the application, we can clone this repository:
 ```
 git clone https://github.com/miggoncan/guardiansDeployment.git
+```
+Then, we may want to change the version being installed. To do that, change the  values 
+of `GUARDIANS_REST_RELEASE`, `SCHEDULER_RELEASE` and `GUARDIANS_WEBAPP_RELEASE` in the 
+`config.sh` file to the desired values. For example:
+```
+GUARDIANS_REST_RELEASE="v1.1.0"
+SCHEDULER_RELEASE="v0.1.4"
+GUARDIANS_WEBAPP_RELEASE="v1.0.0"
+```
+Lastly, we can run the `install.sh` script:
+```
 bash guardiansDeployment/install.sh
 ```
 Note the `install.sh` script needs root privileges.
