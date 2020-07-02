@@ -39,6 +39,13 @@ SCHEDULER_REPO_SRC_DIR="src"
 # The directory inside the git repo that contains the config files
 SCHEDULER_REPO_CONF_DIR="config"
 
+# The repository and tagged version from which the webapp will 
+# be installed
+GUARDIANS_WEBAPP_RELEASE="v1.0.0"
+GUARDIANS_WEBAPP_REPO="https://github.com/miggoncan/guardiansWebapp.git"
+# The name of the directory that will be generated after a git clone
+GUARDIANS_WEBAPP_DIR_NAME="guardiansWebapp"
+
 ###########################################
 #
 # General configuration
@@ -57,9 +64,14 @@ PRELOAD_DOCTORS_AND_SHIFT_CONFIGS=1
 # the jar files without knowing the version suffix). 
 # E.g. guardians-1.0.0.jar -> We could use as a prefix "guardians"
 GUARDIANS_JAR_PREFIX="guardians"
+GUARDIANS_WEBAPP_JAR_PREFIX="guardiansWebapp"
 
 # The user that will execute the guardians rest service daemon
 GUARDIANS_REST_USER="guardiansRestUser"
+# The user that will execute the guardiansWebapp daemon
+GUARDIANS_WEBAPP_USER="guardiansWebappUser"
+# A group the previous users will be part of
+GUARDIANS_SHARED_GROUP="guardians"
 
 MYSQL_DB_NAME="db_guardians"
 MYSQL_USERNAME="guardiansUser"
@@ -78,11 +90,12 @@ SCHEDULER_CONF_DIR_ARG="--configDir="
 #
 ###########################################
 
-# The directory where both the rest service and the webapp will store 
+# The directory where both the rest service and the scheduler will store 
 # their logs
 # Do NOT end this path with /
 # E.d. use "/var/log/guardians" instead of "/var/log/guardians/"
 LOG_DIR="/var/log/guardians"
+LOG_DIR_WEBAPP="/var/log/guardiansWebapp"
 
 # The directory that will contain the application.properties
 GUARDIANS_REST_CONF_DIR="/etc/guardians"
@@ -92,16 +105,12 @@ GUARDIANS_REST_CONF_DIR="/etc/guardians"
 GUARDIANS_REST_KEYSTORE_DIR="/etc/guardians/keystore"
 # The directory that will contain the main JAR file of the REST service
 GUARDIANS_REST_EXEC_DIR="/usr/lib/guardians"
-
 GUARDIANS_REST_PROPERTIES_FILE="application.properties"
-
+GUARDIANS_REST_LOG_FILE="$LOG_DIR/guardians.log"
+GUARDIANS_SERVICE_FILE="guardians.service"
 # The values needed to configure the public-private key for the rest service
 GUARDIANS_REST_KEY_ALIAS="guardians"
 GUARDIANS_REST_KEY_FILE="guardiansREST.p12"
-
-GUARDIANS_REST_LOG_FILE="$LOG_DIR/guardians.log"
-
-GUARDIANS_SERVICE_FILE="guardians.service"
 
 # Files that contain the SQL needed to initialize the database
 GUARDIANS_REST_SQL_DIR="$(dirname "$0")/${GUARDIANS_REST_DIR_NAME}/sql"
@@ -118,10 +127,23 @@ SCHEDULER_CONF_DIR="/etc/guardians/scheduler"
 SCHEDULER_EXEC_DIR="/usr/lib/guardians/scheduler"
 # The script from which the scheduler will be started
 SCHEDULER_ENTRY_POINT="$SCHEDULER_EXEC_DIR/main.py"
-
 SCHEDULER_LOG_FILE="$LOG_DIR/scheduler.log"
-
 SCHEDULER_CONF_LOGGING_FILE_NAME="logging.json"
+
+# The directory that will contain the application.properties
+GUARDIANS_WEBAPP_CONF_DIR="/etc/guardiansWebapp"
+# The directory that will contain the keystore
+# Do NOT end this path with /
+# E.g. use "/etc/guardiansWebapp/keystore" instead of "/etc/guardiansWebapp/keystore/"
+GUARDIANS_WEBAPP_KEYSTORE_DIR="/etc/guardiansWebapp/keystore"
+# The directory that will contain the main JAR file of the Webapp
+GUARDIANS_WEBAPP_EXEC_DIR="/usr/lib/guardiansWebapp"
+GUARDIANS_WEBAPP_PROPERTIES_FILE="application.properties"
+GUARDIANS_WEBAPP_LOG_FILE="$LOG_DIR_WEBAPP/guardiansWebapp.log"
+GUARDIANS_WEBAPP_SERVICE_FILE="guardiansWebapp.service"
+# The values needed to configure the public-private key for the webapp
+GUARDIANS_WEBAPP_KEY_ALIAS="guardiansWebapp"
+GUARDIANS_WEBAPP_KEY_FILE="guardiansWebapp.p12"
 
 ###########################################
 #
@@ -143,10 +165,16 @@ TOKEN_KEYSTORE_FILE="PATH_TO_KEYSTORE"
 TOKEN_KEYSTORE_ALIAS="KEYSTORE_ALIAS"
 TOKEN_KEYSTORE_PASSWORD="KEYSTORE_PASSWORD"
 
+TOKEN_TRUSTSTORE_FILE="PATH_TO_TRUSTSTORE"
+TOKEN_TRUSTSTORE_PASSWORD="TRUSTSTORE_PASSWORD"
+
 TOKEN_LOG_FILE="PATH_TO_LOG_FILE"
 
 TOKEN_BASIC_AUTH_USERNAME="BASIC_AUTH_USERNAME"
 TOKEN_BASIC_AUTH_PASSWORD="BASIC_AUTH_PASSWORD"
+
+TOKEN_WEBAPP_USERNAME="WEBAPP_USERNAME"
+TOKEN_WEBAPP_PASSWORD="WEBAPP_PASSWORD"
 
 TOKEN_SCHEDULER_COMMAND="SCHEDULER_COMMAND"
 TOKEN_SCHEDULER_ENTRY_POINT="SCHEDULER_ENTRY_POINT"

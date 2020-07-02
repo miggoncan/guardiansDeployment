@@ -76,9 +76,14 @@ showUnexpectedError() {
 # Remove temporary files created during the installation
 cleanUp()  {
     echo "Cleaning up"
+
     rm -rf $GUARDIANS_REST_DIR_NAME
     rm -f $GUARDIANS_REST_KEY_FILE
+
     rm -rf $SCHEDULER_DIR_NAME
+
+    rm -rf $GUARDIANS_WEBAPP_DIR_NAME
+    rm -f $GUARDIANS_WEBAPP_KEY_FILE
 }
 
 
@@ -99,32 +104,69 @@ main () {
     is_bin_in_path $PYTHON || notInstalled $PYTHON
 
 
-    echo "Creating users: $GUARDIANS_REST_USER"
-    useradd --no-create-home $GUARDIANS_REST_USER
+    # Request user and password used to authenticate to the webapp
+    echo
+    echo "Please, input usernames and password used to authenticate to the webapp"
+    PASSWORDS_MATCH=0
+    while [ $PASSWORDS_MATCH -eq 0 ]; do
+        read -p "Username: " webappUsername
+        read -s -p "Password: " webappPassword
+        echo
+        read -s -p "Repeat password: " webappPasswordRepeated
+        echo
+
+        if [ $webappPassword != $webappPasswordRepeated ]; then
+            echo "The passwords do not match. Please, repeat them"
+        else
+            PASSWORDS_MATCH=1
+        fi
+    done
+    echo
+
+
+    echo "Creating group: '$GUARDIANS_SHARED_GROUP' and users: '$GUARDIANS_REST_USER', '$GUARDIANS_WEBAPP_USER'"
+    groupadd $GUARDIANS_SHARED_GROUP
+    useradd --no-create-home $GUARDIANS_REST_USER --groups $GUARDIANS_SHARED_GROUP
     usermod --lock $GUARDIANS_REST_USER
+    useradd --no-create-home $GUARDIANS_WEBAPP_USER --groups $GUARDIANS_SHARED_GROUP
+    usermod --lock $GUARDIANS_WEBAPP_USER
 
 
     echo "Creating needed directories"
+
     mkdir -p $LOG_DIR
+    mkdir -p $LOG_DIR_WEBAPP
+
     mkdir -p $GUARDIANS_REST_CONF_DIR
     mkdir -p $GUARDIANS_REST_KEYSTORE_DIR
     mkdir -p $GUARDIANS_REST_EXEC_DIR
+
     mkdir -p $SCHEDULER_CONF_DIR
     mkdir -p $SCHEDULER_EXEC_DIR
+
+    mkdir -p $GUARDIANS_WEBAPP_CONF_DIR
+    mkdir -p $GUARDIANS_WEBAPP_KEYSTORE_DIR
+    mkdir -p $GUARDIANS_WEBAPP_EXEC_DIR
 
 
     echo "Generating passwords"
     passwordMysql="$($GEN_PASSWORD_COMMAND)"
-    passwordKeystore="$($GEN_PASSWORD_COMMAND)"
+    passwordKeystoreRest="$($GEN_PASSWORD_COMMAND)"
+    passwordKeystoreWebapp="$($GEN_PASSWORD_COMMAND)"
     passwordBasicAuth="$($GEN_PASSWORD_COMMAND)"
 
 
-    echo "Generating the key for guardians rest service"
-    bash genaratePkcs12Key.sh $passwordKeystore \
-        --alias=$GUARDIANS_REST_KEY_ALIAS \
-        --file=$GUARDIANS_REST_KEY_FILE
+    echo "Generating the keys for guardians rest service and the webapp"
+
+    bash generatePkcs12Key.sh "$passwordKeystoreRest" \
+        "--alias=$GUARDIANS_REST_KEY_ALIAS" \
+        "--file=$GUARDIANS_REST_KEY_FILE"
     cp $GUARDIANS_REST_KEY_FILE $GUARDIANS_REST_KEYSTORE_DIR/$GUARDIANS_REST_KEY_FILE
 
+    bash generatePkcs12Key.sh "$passwordKeystoreWebapp" \
+        "--alias=$GUARDIANS_WEBAPP_KEY_ALIAS" \
+        "--file=$GUARDIANS_WEBAPP_KEY_FILE"
+    cp $GUARDIANS_WEBAPP_KEY_FILE $GUARDIANS_WEBAPP_KEYSTORE_DIR/$GUARDIANS_WEBAPP_KEY_FILE
 
     echo "Cloning guardians rest release $GUARDIANS_REST_RELEASE"
     output="$($GIT clone --single-branch -b $GUARDIANS_REST_RELEASE $GUARDIANS_REST_REPO 2>&1)"
@@ -142,7 +184,7 @@ main () {
         \
         "${TOKEN_KEYSTORE_FILE}=${GUARDIANS_REST_KEYSTORE_DIR}/${GUARDIANS_REST_KEY_FILE}" \
         "${TOKEN_KEYSTORE_ALIAS}=${GUARDIANS_REST_KEY_ALIAS}" \
-        "${TOKEN_KEYSTORE_PASSWORD}=${passwordKeystore}" \
+        "${TOKEN_KEYSTORE_PASSWORD}=${passwordKeystoreRest}" \
         \
         "${TOKEN_LOG_FILE}=${GUARDIANS_REST_LOG_FILE}" \
         \
@@ -186,6 +228,7 @@ main () {
     output="$($GIT clone --single-branch -b $SCHEDULER_RELEASE $SCHEDULER_REPO 2>&1)"
     [ $? -eq 0 ] || showUnexpectedError "$output"
 
+
     echo "Configuring the scheduler"
 
     # Install dependencies using pip
@@ -202,44 +245,103 @@ main () {
     cp $SCHEDULER_DIR_NAME/$SCHEDULER_REPO_SRC_DIR/* $SCHEDULER_EXEC_DIR/
 
 
-    # TODO configure the webapp
+    echo "Cloning webapp release $GUARDIANS_WEBAPP_RELEASE"
+    output="$($GIT clone --single-branch -b $GUARDIANS_WEBAPP_RELEASE $GUARDIANS_WEBAPP_REPO 2>&1)"
+    [ $? -eq 0 ] || showUnexpectedError "$output"
 
-    # TODO install dependencies
+
+    echo "Configuring the webapp"
+
+    # Configure the application.properties file
+    webappPropertiesFile="$GUARDIANS_WEBAPP_DIR_NAME/$GUARDIANS_WEBAPP_PROPERTIES_FILE"
+    $PYTHON replace.py $webappPropertiesFile \
+        "${TOKEN_KEYSTORE_FILE}=${GUARDIANS_WEBAPP_KEYSTORE_DIR}/${GUARDIANS_WEBAPP_KEY_FILE}" \
+        "${TOKEN_KEYSTORE_ALIAS}=${GUARDIANS_WEBAPP_KEY_ALIAS}" \
+        "${TOKEN_KEYSTORE_PASSWORD}=${passwordKeystoreWebapp}" \
+        \
+        "${TOKEN_LOG_FILE}=${GUARDIANS_WEBAPP_LOG_FILE}" \
+        \
+        "${TOKEN_TRUSTSTORE_FILE}=${GUARDIANS_REST_KEYSTORE_DIR}/${GUARDIANS_REST_KEY_FILE}" \
+        "${TOKEN_TRUSTSTORE_PASSWORD}=${passwordKeystoreRest}" \
+        \
+        "${TOKEN_BASIC_AUTH_USERNAME}=${BASIC_AUTH_USERNAME}" \
+        "${TOKEN_BASIC_AUTH_PASSWORD}=${passwordBasicAuth}" \
+        \
+        "${TOKEN_WEBAPP_USERNAME}=${webappUsername}" \
+        "${TOKEN_WEBAPP_PASSWORD}=${webappPassword}"
+    cp $webappPropertiesFile $GUARDIANS_WEBAPP_CONF_DIR/$GUARDIANS_WEBAPP_PROPERTIES_FILE
+
+    # Copy the executable file to its corresponding destination
+    guardiansWebappJar="$(ls $GUARDIANS_WEBAPP_DIR_NAME | grep $GUARDIANS_WEBAPP_JAR_PREFIX)"
+    cp $GUARDIANS_WEBAPP_DIR_NAME/$guardiansWebappJar $GUARDIANS_WEBAPP_EXEC_DIR/$guardiansWebappJar
+
+    # Configure the service file
+    cp $GUARDIANS_WEBAPP_SERVICE_FILE /etc/systemd/system/$GUARDIANS_WEBAPP_SERVICE_FILE
+    $PYTHON replace.py /etc/systemd/system/$GUARDIANS_WEBAPP_SERVICE_FILE \
+        "${TOKEN_APPLICATION_PROPERTIES}=${GUARDIANS_WEBAPP_CONF_DIR}/${GUARDIANS_WEBAPP_PROPERTIES_FILE}" \
+        "${TOKEN_GUARDIANS_USER}=${GUARDIANS_WEBAPP_USER}" \
+        "${TOKEN_GUARDIANS_ENTRY_POINT}=${GUARDIANS_WEBAPP_EXEC_DIR}/${guardiansWebappJar}"
+    systemctl daemon-reload
+    # The service will run on startup
+    systemctl enable guardiansWebapp
 
 
-    echo "Changing permissions and ownerships of needed directories"
+    echo "Changing ownerships of needed directories"
 
-    userAndGroup="${GUARDIANS_REST_USER}:${GUARDIANS_REST_USER}"
-    chown -R $userAndGroup $LOG_DIR
-    chown -R $userAndGroup $GUARDIANS_REST_CONF_DIR
-    chown -R $userAndGroup $GUARDIANS_REST_KEYSTORE_DIR
-    chown -R $userAndGroup $GUARDIANS_REST_EXEC_DIR
-    chown -R $userAndGroup $SCHEDULER_CONF_DIR
-    chown -R $userAndGroup $SCHEDULER_EXEC_DIR
+    userAndGroupRest="${GUARDIANS_REST_USER}:${GUARDIANS_REST_USER}"
+    userAndGroupWebapp="${GUARDIANS_WEBAPP_USER}:${GUARDIANS_WEBAPP_USER}"
+    userRestAndGroupShared="${GUARDIANS_REST_USER}:${GUARDIANS_SHARED_GROUP}"
+    chown -R $userAndGroupRest $LOG_DIR
+    chown -R $userAndGroupWebapp $LOG_DIR_WEBAPP
+
+    chown -R $userAndGroupRest $GUARDIANS_REST_CONF_DIR
+    chown -R $userRestAndGroupShared $GUARDIANS_REST_KEYSTORE_DIR
+    chown -R $userAndGroupRest $GUARDIANS_REST_EXEC_DIR
+
+    chown -R $userAndGroupRest $SCHEDULER_CONF_DIR
+    chown -R $userAndGroupRest $SCHEDULER_EXEC_DIR
+
+    chown -R $userAndGroupWebapp $GUARDIANS_WEBAPP_CONF_DIR
+    chown -R $userAndGroupWebapp $GUARDIANS_WEBAPP_KEYSTORE_DIR
+    chown -R $userAndGroupWebapp $GUARDIANS_WEBAPP_EXEC_DIR
+
+
+    echo "Changing permissions of needed directories and files"
 
     # The config and keystore directory will not be changed, so only 
     # permissions to navigate and list files are needed
     chmod 550 $GUARDIANS_REST_CONF_DIR
     chmod 550 $GUARDIANS_REST_KEYSTORE_DIR
     chmod 550 $SCHEDULER_CONF_DIR
+    chmod 550 $GUARDIANS_WEBAPP_CONF_DIR
+    chmod 550 $GUARDIANS_WEBAPP_KEYSTORE_DIR
 
     # The config files and the keystore files only have to be read
     chmod 440 $GUARDIANS_REST_CONF_DIR/$GUARDIANS_REST_PROPERTIES_FILE
     chmod 440 $GUARDIANS_REST_KEYSTORE_DIR/$GUARDIANS_REST_KEY_FILE
     chmod 440 $SCHEDULER_CONF_DIR/*
+    chmod 440 $GUARDIANS_WEBAPP_CONF_DIR/$GUARDIANS_WEBAPP_PROPERTIES_FILE
+    chmod 440 $GUARDIANS_WEBAPP_KEYSTORE_DIR/$GUARDIANS_WEBAPP_KEY_FILE
 
     # Navigate, list and create files in these directories
     chmod 770 $LOG_DIR
+    chmod 770 $LOG_DIR_WEBAPP
     chmod 770 $GUARDIANS_REST_EXEC_DIR
     chmod 770 $SCHEDULER_EXEC_DIR
+    chmod 770 $GUARDIANS_WEBAPP_EXEC_DIR
 
     # The main jar only has to be read
     chmod 440 $GUARDIANS_REST_EXEC_DIR/$guardiansRestJar
     # The scheduler scripts only need to be read
     chmod 440 $SCHEDULER_EXEC_DIR/*.py
+    chmod 440 $GUARDIANS_WEBAPP_EXEC_DIR/$guardiansWebappJar
 
 
     cleanUp
+
+    echo
+    echo "To start the services, use 'systemctl start guardians' and "
+    echo "'systemctl start guardiansWebapp'."
 }
 
 main

@@ -1,0 +1,15 @@
+[Unit]
+Description=Guardians Webapp Daemon
+After=network.target
+After=systemd-user-sessions.service
+After=network-online.target
+ConditionPathExists=PATH_TO_APPLICATION_PROPERTIES
+
+[Service]
+Type=simple
+User=GUARDIANS_USER
+ExecStart=/usr/lib/jvm/java-8-openjdk-amd64/bin/java -jar GUARDIANS_ENTRY_POINT --spring.config.location=PATH_TO_APPLICATION_PROPERTIES
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target
