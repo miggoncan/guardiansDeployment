@@ -9,10 +9,30 @@ This respository contains the scripts needed to deploy the [guardians applicatio
  2. MySQL Server
  3. OpenJDK-1.8
 
-### Installation dependencies
+### Setup dependencies
 
  1. Git
  2. MySQL command line client
+ 
+### Installing the dependencies
+
+These dependencies can be installed with a package manager such as `apt-get`:
+```
+apt-get update
+apt-get install python3.7
+apt-get install python3-pip
+apt-get install mysql-server
+apt-get install openjdk-8-jdk
+apt-get install git
+```
+
+The `mysql-server` package also includes the command line tool `mysql` needed to 
+connect to the database.
+
+Note that it is highly recommended configuring the database by running:
+```
+secure_mysql_installation
+```
 
 ## Configuration
 
@@ -24,8 +44,14 @@ The contents of the file are self-explanatory.
 
 ## Deployment
 
-To install deploy the application, just run `bash install.sh`.
+To deploy the application, we can clone this repository and run the `install.sh` script:
+```
+git clone https://github.com/miggoncan/guardiansDeployment.git
+bash guardiansDeployment/install.sh
+```
+Note the `install.sh` script needs root privileges.
 
+If we want to change the deployment configuration, we can change the contents of `config.sh`. 
 By default, the application will be deployed as:
 ```
 /etc/
@@ -58,9 +84,5 @@ By default, the application will be deployed as:
  |- guardiansWebapp/
  |   |- guardiansWebapp-vXXX.jar # The Web server’s jar file
 ```
-
-Note, the deployment has been configured for the ubuntu file system.
-In case the application was to be deployed in a different file system,
-edit the `config.sh` script.
 
 Tested on Ubuntu 18.04 LTS.
