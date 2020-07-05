@@ -23,7 +23,7 @@
 
 # The repository and tagged version from which the rest service will 
 # be installed
-GUARDIANS_REST_RELEASE="v1.1.0"
+GUARDIANS_REST_RELEASE="v1.1.1"
 GUARDIANS_REST_REPO="https://github.com/miggoncan/guardiansRESTinterface.git"
 # The name of the directory that will be generated after a git clone
 GUARDIANS_REST_DIR_NAME="guardiansRESTinterface"
