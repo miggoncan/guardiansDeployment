@@ -1,4 +1,4 @@
-# Guardians deploment
+# Guardians deployment
 This respository contains the scripts needed to deploy the [guardians application](https://github.com/miggoncan/guardiansRESTinterface).
 
 ## Dependencies
